@@ -1,0 +1,91 @@
+---
+title: "chess_analysis"
+output: html_document
+---
+
+## libraries
+
+```{r libraries}
+library(tidyverse)
+
+names(csv)
+```
+
+## setup
+
+```{r setup}
+setwd("P:/Bomi/dabbles/chess")
+
+theme_ideal <- theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## csv
+
+```{r csv}
+csv <- read_csv("chess.csv")
+
+names(csv)
+View(csv)
+
+clean_csv <- csv %>% 
+  filter(rated == TRUE) %>% 
+  select(rated,
+         turns,
+         victory_status,
+         winner,
+         white_id,
+         white_rating,
+         black_id,
+         black_rating,
+         opening_eco,
+         opening_name) %>%
+  mutate(winner = factor(winner,
+                         levels = c("white",
+                                    "black",
+                                    "draw"))) %>%
+  mutate(difference = white_rating - black_rating)
+```
+
+## difference between white and black players?
+
+```{r}
+clean_csv %>% 
+  group_by(winner, victory_status) %>%
+  summarize(n = n()) %>%
+  arrange(desc(n)) %>%
+  group_by(victory_status) %>%
+  mutate(percent = n / sum(n)) %>%
+  ggplot(aes(x = reorder(victory_status, percent),
+             y = percent,
+             fill = winner)) +
+  geom_col(position = "dodge") +
+  theme_ideal +
+  scale_fill_manual(values = c("lightgrey",
+                               "black",
+                               "lightpink")) +
+  labs(x = "victory status",
+       y = "percentage",
+       title = "Victory Status of White and Black Pieces") +
+  geom_text(aes(label = paste0(round(percent*100, 1), "%")), 
+            position = position_dodge(0.9),
+            vjust = 0.01)
+```
+
+## top 5 opening moves for checkmates
+
+```{r}
+clean_csv %>%
+  filter(victory_status == "mate") %>%
+  group_by(winner, victory_status, opening_name) %>%
+  summarize(n = n()) %>%
+  top_n(5) %>%
+  ggplot(aes(x = reorder(opening_name, n), y = n, fill = winner)) +
+  geom_col() +
+  theme_ideal + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = c("lightgrey", "black")) +
+  labs(x = "opening moves", y = "count",
+       title = "Opening Moves for Checkmates") +
+  geom_text(aes(label = n), vjust = 0.01)
+```
